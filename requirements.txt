@@ -1,0 +1,28 @@
+# 人工智能分拣系统 - Python依赖
+# 安装: pip install -r requirements.txt
+# 环境: conda activate B
+
+# 计算机视觉
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+
+# 数值计算
+numpy>=1.24.0
+
+# 图像处理
+Pillow>=10.0.0
+
+# OCR文字识别（瓶盖日期检测）
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+
+# YOLO目标检测/分类（水果识别）
+ultralytics>=8.0.0
+
+# 注意:
+# - tkinter 随 Python 内置，无需安装
+# - camera/mvs.py 依赖 MVS SDK DLL（海康威视工业相机）
+#   需安装 MVS 客户端，DLL路径: C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64
+# - robot/DobotDllType.py 依赖 DobotDll.dll（Dobot机械臂）
+#   DLL 已包含在 robot/ 目录下
+# - PaddleOCR 首次运行会自动下载模型文件

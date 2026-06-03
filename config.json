@@ -1,0 +1,66 @@
+{
+    "pcb": {
+        "mode": "simple",
+        "loop": false,
+        "length_min_mm": 70,
+        "length_max_mm": 80,
+        "width_min_mm": 40,
+        "width_max_mm": 60,
+        "grab_z": -30,
+        "safe_height": 50,
+        "sort_target": {"x": 200, "y": 0, "z": 20},
+        "outline_rgb": {
+            "r_min": 20, "r_max": 255,
+            "g_min": 66, "g_max": 254,
+            "b_min": 40, "b_max": 255
+        }
+    },
+
+    "calibration": {
+        "xml_path": "D:\\doucuments\\标定5.28.xml"
+    },
+
+    "bottle_cap": {
+        "mode": "dual_area",
+        "loop": true,
+        "diameter_min_mm": 20,
+        "diameter_max_mm": 40,
+        "grab_z": -54,
+        "safe_height": 50,
+        "date_template": "Expiry:*/*/*",
+        "expiry_date": "2026/6/15",
+        "ok_target": {"x": 200, "y": 0, "z": 40},
+        "ng_target": {"x": 200, "y": 0, "z": 40},
+        "baidu_ocr": {
+            "api_key": "50mWFoFlbc5Rl2qOBHGOPjhC",
+            "secret_key": "wXN3Q680UlIylFC5j1K9lGZPyqp54WW9"
+        }
+    },
+
+    "fruit": {
+        "mode": "dual_area",
+        "loop": true,
+        "diameter_min_mm": 20,
+        "diameter_max_mm": 40,
+        "grab_z": -54,
+        "safe_height": 50,
+        "confidence_threshold": 0.3,
+        "ok_fruit": "Apples",
+        "ok_target": {"x": 200, "y": 0, "z": 40},
+        "ng_target": {"x": 200, "y": -0, "z": 40}
+    },
+
+    "robot": {
+        "com_port": "COM3",
+        "baudrate": 115200,
+        "home_x": 200,
+        "home_y": 0,
+        "home_z": 40,
+        "home_r": 0
+    },
+
+    "camera": {
+        "index": 0,
+        "exposure_time":40000.0
+    }
+}

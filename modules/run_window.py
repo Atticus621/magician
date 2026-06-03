@@ -24,12 +24,14 @@
   - 分拣使用模拟数据
   - 曝光时间设置仅显示提示
 """
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 import threading
 import time
 import cv2
 from PIL import Image, ImageTk
+from modules.config_manager import config as app_config
 
 
 class RunWindow:
@@ -50,6 +52,12 @@ class RunWindow:
         self._pending_results = None  # 拍照识别后暂存的分拣结果
         self._test_mode_init = test_mode  # 初始值，run() 中创建 BooleanVar
 
+        # 人脸识别配置
+        face_cfg = app_config.face if hasattr(app_config, 'face') else None
+        self._face_threshold = face_cfg.match_threshold if face_cfg and hasattr(face_cfg, 'match_threshold') else 60
+        self._session_number = face_cfg.session_number if face_cfg and hasattr(face_cfg, 'session_number') else 0
+        self._team_number = face_cfg.team_number if face_cfg and hasattr(face_cfg, 'team_number') else 0
+
     def run(self):
         """显示运行窗口（阻塞）。"""
         self._root = tk.Tk()
@@ -66,6 +74,21 @@ class RunWindow:
         self._root.geometry(f"{w}x{h}+{x}+{y}")
 
         self._build_ui()
+
+        # 初始化人脸训练数据
+        if self._face is not None:
+            face_data_dir = os.path.join(
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+                "face_data")
+            try:
+                ok = self._face.init_face_recognition(face_data_dir)
+                if ok:
+                    self._set_info("人脸数据已加载，请进行人脸识别")
+                else:
+                    self._set_info("未找到人脸训练数据，将仅做检测")
+            except Exception as e:
+                self._set_info(f"人脸数据加载失败: {e}")
+
         self._root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._root.mainloop()
 
@@ -210,6 +233,16 @@ class RunWindow:
                   bg="#D32F2F", fg="white", activebackground="#B71C1C",
                   width=9, command=self._on_emergency_stop).pack(side=tk.LEFT)
 
+        # 队伍信息显示区（人脸识别按钮上方）
+        self._info_frame = tk.Frame(right_frame, bg="#e8e8e8", relief=tk.GROOVE, bd=1)
+        self._info_frame.pack(padx=10, pady=(5, 8), fill=tk.X)
+        self._label_info = tk.Label(self._info_frame,
+                                    text="等待人脸识别...",
+                                    font=("Microsoft YaHei", 13, "bold"),
+                                    bg="#e8e8e8", fg="#333333",
+                                    anchor="center", height=2)
+        self._label_info.pack(fill=tk.X, padx=5, pady=5)
+
         # 人脸识别按钮（蓝色）
         self._btn_face = tk.Button(right_frame, text="人脸识别",
                                    font=("Microsoft YaHei", 13, "bold"),
@@ -290,6 +323,11 @@ class RunWindow:
         self._text_status.insert(tk.END, msg)
         self._text_status.configure(state=tk.DISABLED)
 
+    def _set_info(self, text, fg="#333333", bg="#e8e8e8"):
+        """设置队伍信息显示标签。"""
+        self._label_info.configure(text=text, fg=fg, bg=bg)
+        self._info_frame.configure(bg=bg)
+
     def _log_data(self, msg):
         """向左侧分拣显示区追加一行。"""
         timestamp = time.strftime("%H:%M:%S")
@@ -307,7 +345,10 @@ class RunWindow:
         # 测试模式：跳过摄像头，直接模拟通过
         if self._test_mode.get():
             self._set_status("[测试模式] 模拟人脸识别通过")
-            self._on_face_result(True)
+            self._on_face_result({
+                "detected": True, "matched": True,
+                "name": "测试用户", "confidence": 95.0,
+            })
             return
 
         if self._face is None:
@@ -315,29 +356,67 @@ class RunWindow:
             return
 
         self._btn_face.configure(state=tk.DISABLED)
+        self._set_info("正在识别，请正对摄像头...", fg="#1976D2")
         self._set_status("正在打开摄像头，请正对屏幕...")
 
         def _run():
             result = self._face.detect_face(
-                callback=lambda msg: self._root.after(0, self._set_status, msg)
+                callback=lambda msg: self._root.after(0, self._set_status, msg),
+                recognizer_enabled=True,
+                match_threshold=self._face_threshold,
             )
             self._root.after(0, self._on_face_result, result)
 
         threading.Thread(target=_run, daemon=True).start()
 
-    def _on_face_result(self, detected):
-        """人脸识别结果处理。"""
-        if detected:
+    def _on_face_result(self, result):
+        """人脸识别结果处理。
+
+        Args:
+            result: dict {detected, matched, name, confidence} 或 bool（兼容旧模式）
+        """
+        # 兼容旧的 bool 返回值
+        if isinstance(result, bool):
+            result = {
+                "detected": result, "matched": result,
+                "name": "未知", "confidence": 100.0 if result else 0.0,
+            }
+
+        detected = result.get("detected", False)
+        confidence = result.get("confidence", 0.0)
+        name = result.get("name", "")
+
+        if detected and confidence >= self._face_threshold:
             self._face_verified = True
             self._set_status("识别成功，可以开始分拣")
-            # 物料分拣按钮：红色灰字 → 绿色白字
             self._btn_sort.configure(bg="#4CAF50", fg="white",
                                      activebackground="#388E3C")
-            self._btn_face.configure(state=tk.NORMAL)  # 恢复蓝色按钮
-            self._log_data("人脸识别成功")
-        else:
-            self._set_status("识别失败，请重试")
             self._btn_face.configure(state=tk.NORMAL)
+            self._log_data(f"人脸识别通过: {name}, 匹配度: {confidence:.1f}%")
+
+            # 短暂显示 "人脸识别通过，匹配度：XX%"
+            pass_text = f"人脸识别通过\n匹配度：{confidence:.1f}%"
+            self._set_info(pass_text, fg="#FFFFFF", bg="#4CAF50")
+
+            # 2秒后显示队伍信息
+            def _show_team():
+                team_text = f"场次号：{self._session_number}\n队伍号：{self._team_number}"
+                self._set_info(team_text, fg="#1B5E20", bg="#C8E6C9")
+
+            self._root.after(2000, _show_team)
+
+        elif detected:
+            # 检测到人脸但匹配度不足
+            self._set_status(f"匹配度不足 ({confidence:.1f}%)，请重试")
+            self._set_info(f"匹配度不足\n{confidence:.1f}% < {self._face_threshold}%",
+                           fg="#FFFFFF", bg="#FF9800")
+            self._btn_face.configure(state=tk.NORMAL)
+            self._log_data(f"匹配度不足: {name}, {confidence:.1f}%")
+        else:
+            self._set_status("未检测到人脸，请重试")
+            self._set_info("未检测到人脸", fg="#FFFFFF", bg="#f44336")
+            self._btn_face.configure(state=tk.NORMAL)
+            self._log_data("人脸识别失败：未检测到人脸")
 
     # ------------------------------------------------------------------
     # 分拣模式切换

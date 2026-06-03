@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 # ── 全局测试模式 ──
 # 开启后：跳过登录验证（无需用户名密码）、人脸识别自动通过、分拣使用模拟数据
-TEST_MODE = True
+TEST_MODE = False
 
 
 def launch_run_window():

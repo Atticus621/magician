@@ -28,7 +28,7 @@
         "grab_z": -54,
         "safe_height": 50,
         "date_template": "Expiry:*/*/*",
-        "expiry_date": "2026/6/15",
+        "expiry_date": "2026/6/6",
         "ok_target": {"x": 200, "y": 0, "z": 40},
         "ng_target": {"x": 200, "y": 0, "z": 40},
         "baidu_ocr": {
@@ -61,6 +61,12 @@
 
     "camera": {
         "index": 0,
-        "exposure_time":40000.0
+        "exposure_time":10000.0
+    },
+
+    "face": {
+        "match_threshold": 60,
+        "session_number": 2,
+        "team_number": 25
     }
 }
